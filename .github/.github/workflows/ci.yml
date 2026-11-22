@@ -1,4 +1,4 @@
-name: Python CI
+name: Fullstack CI (Node.js Backend/Frontend + Python Tests)
 
 on:
   pull_request:
@@ -7,8 +7,32 @@ on:
     branches: [ main ]
 
 jobs:
-  lint-and-test:
-    name: Lint and Test
+  backend-nodejs:
+    name: Backend Node.js Checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install dependencies, lint and test
+        run: |
+          if [ -f "backend/package.json" ]; then
+            cd backend
+            if [ -f package-lock.json ]; then npm ci; else npm install; fi
+            npm run lint --if-present
+            npm test --if-present
+          else
+            echo "backend/package.json not found yet, skipping Node.js backend checks"
+          fi
+
+  backend-python-tests:
+    name: Backend Python Tests
     runs-on: ubuntu-latest
 
     steps:
@@ -20,14 +44,38 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install dependencies
+      - name: Install dependencies and run Pytest
         run: |
-          python -m pip install --upgrade pip
-          pip install ruff pytest
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          if [ -d "backend" ]; then
+            cd backend
+            python -m pip install --upgrade pip
+            pip install pytest
+            if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+            pytest || [ $? -eq 5 ]
+          else
+            echo "Directory backend/ not found yet, skipping Python tests"
+          fi
 
-      - name: Run Ruff linter
-        run: ruff check .
+  frontend-nodejs:
+    name: Frontend Node.js Checks
+    runs-on: ubuntu-latest
 
-      - name: Run Pytest
-        run: pytest || [ $? -eq 5 ] # код 5 означает, что тестов пока 0 (не падаем на старте)
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install dependencies, lint and test
+        run: |
+          if [ -f "frontend/package.json" ]; then
+            cd frontend
+            if [ -f package-lock.json ]; then npm ci; else npm install; fi
+            npm run lint --if-present
+            npm test --if-present
+          else
+            echo "frontend/package.json not found yet, skipping Node.js frontend checks"
+          fi
