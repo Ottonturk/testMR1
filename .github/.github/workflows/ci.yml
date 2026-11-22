@@ -1,4 +1,4 @@
-name: Python CI
+name: Fullstack CI (Python + Node.js)
 
 on:
   pull_request:
@@ -7,8 +7,8 @@ on:
     branches: [ main ]
 
 jobs:
-  lint-and-test:
-    name: Lint and Test
+  python-checks:
+    name: Python Lint and Test
     runs-on: ubuntu-latest
 
     steps:
@@ -20,14 +20,43 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install dependencies
+      - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
           pip install ruff pytest
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          if [ -f backend/requirements.txt ]; then pip install -r backend/requirements.txt; fi
 
       - name: Run Ruff linter
         run: ruff check .
 
       - name: Run Pytest
-        run: pytest || [ $? -eq 5 ] # код 5 означает, что тестов пока 0 (не падаем на старте)
+        run: pytest || [ $? -eq 5 ]
+
+  nodejs-checks:
+    name: Node.js Lint and Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install and check Node.js (root or frontend/)
+        run: |
+          NODE_DIR=""
+          if [ -f package.json ]; then NODE_DIR="."; fi
+          if [ -f frontend/package.json ]; then NODE_DIR="frontend"; fi
+
+          if [ -n "$NODE_DIR" ]; then
+            cd "$NODE_DIR"
+            if [ -f package-lock.json ]; then npm ci; else npm install; fi
+            npm run lint --if-present
+            npm test --if-present
+          else
+            echo "No package.json found yet, skipping Node.js checks"
+          fi
