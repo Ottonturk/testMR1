@@ -1,0 +1,63 @@
+name: Fullstack CI
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+jobs:
+  backend-nodejs:
+    name: Backend Node.js Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: |
+          if [ -f "backend/package.json" ]; then
+            cd backend
+            if [ -f package-lock.json ]; then npm ci; else npm install; fi
+            npm run lint --if-present
+            npm test --if-present
+          else
+            echo "backend/package.json not found yet"
+          fi
+
+  backend-python-tests:
+    name: Backend Python Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: |
+          if [ -d "backend" ]; then
+            cd backend
+            python -m pip install --upgrade pip
+            pip install pytest
+            if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+            pytest || [ $? -eq 5 ]
+          else
+            echo "backend/ directory not found yet"
+          fi
+
+  frontend-nodejs:
+    name: Frontend Node.js Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: |
+          if [ -f "frontend/package.json" ]; then
+            cd frontend
+            if [ -f package-lock.json ]; then npm ci; else npm install; fi
+            npm run lint --if-present
+            npm test --if-present
+          else
+            echo "frontend/package.json not found yet"
+          fi
